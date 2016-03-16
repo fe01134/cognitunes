@@ -1,0 +1,11 @@
+{
+  "intents": [
+    {
+      "intent": "CognitunesIntent"
+    },
+    {
+      "intent": "AMAZON.HelpIntent"
+    }
+  ]
+}
+
