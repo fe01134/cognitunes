@@ -13,7 +13,7 @@
  */
 var APP_ID = undefined;//replace with 'amzn1.echo-sdk-ams.app.[your-unique-value-here]';
 
-var http = require('http');
+var https = require('https');
 
 /**
  * The AlexaSkill prototype and helper functions
@@ -44,7 +44,15 @@ Cognitunes.prototype.eventHandlers.onSessionStarted = function (sessionStartedRe
 
 Cognitunes.prototype.eventHandlers.onLaunch = function (launchRequest, session, response) {
     console.log("onLaunch requestId: " + launchRequest.requestId + ", sessionId: " + session.sessionId);
-    handleWelcomeRequest(response);
+    var speechOutput = {
+        speech: "Welcome to Cognitunes. What's going on?",
+        type: AlexaSkill.speechOutputType.PLAIN_TEXT
+    };
+    var repromptOutput = {
+        speech: "Tell me what's going on with you, and I can play some music.",
+        type: AlexaSkill.speechOutputType.PLAIN_TEXT
+    };
+    response.ask(speechOutput, repromptOutput)
 };
 
 Cognitunes.prototype.eventHandlers.onSessionEnded = function (sessionEndedRequest, session) {
@@ -89,7 +97,7 @@ var EMOTIONS = {
     'anger': ["https://s3.amazonaws.com/bean-mrjob/anger.mp3"],
     'fear': ["https://s3.amazonaws.com/bean-mrjob/fear.mp3"],
     'disgust': ["https://s3.amazonaws.com/bean-mrjob/disgust.mp3"],
-    'sadness': ["https://s3.amazonaws.com/bean-mrjob/sadness.mp3"],
+    'sadness': ["https://s3.amazonaws.com/bean-mrjob/sadness.mp3"]
 };
 
 
@@ -98,7 +106,7 @@ function handlePhraseDialogRequest(intent, session, response) {
     var phrase = intent.slots.Phrase;
     var speechOutput;
 
-    getEmotionForPhrase(phrase, function(emotion, error) {
+    getEmotionForPhrase(phrase.value, function(emotion, error) {
         if (error) {
             speechOutput = "Sorry, my friend IBM Watson is experiencing issues. Please try again.";
         } else {
@@ -113,16 +121,19 @@ function getEmotionForPhrase(phrase, emotionResponseCallback) {
     var endpoint = "https://qb54apltkl.execute-api.us-east-1.amazonaws.com/prod/alchemy-emotions/";
     var url = endpoint + "?phrase=" + phrase;
 
-    var emotionString;
-
-    http.get(url, function(res) {
+    var emotionString = '';
+    console.log('URL: ' + url);
+    https.get(url, function(res) {
         res.on('data', function(data) {
-            emotionString = data['emotion'];
+            console.log('on data - data: ' + data);
+            emotionString += data;
         });
 
         res.on('end', function() {
-            var emotion = JSON.parse(emotionString);
-            emotionResponseCallback(emotion, null);
+            console.log('on end -  emotionString: ' + emotionString);
+            var emotionObj = JSON.parse(emotionString);
+            console.log('')
+            emotionResponseCallback(emotionObj.emotion, null);
         });
     }).on('error', function(err) {
         console.log('Get emotions for phrase error: ' + err.message);
@@ -147,6 +158,6 @@ function handleNoSlotDialogRequest(intent, session, response) {
 
 // Create the handler that responds to the Alexa Request.
 exports.handler = function (event, context) {
-    var Cognitunes = new Cognitunes();
-    Cognitunes.execute(event, context);
+    var cognitunes = new Cognitunes();
+    cognitunes.execute(event, context);
 };
