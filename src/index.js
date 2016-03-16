@@ -59,9 +59,9 @@ Cognitunes.prototype.eventHandlers.onSessionEnded = function (sessionEndedReques
  */
 Cognitunes.prototype.intentHandlers = {
     "DialogIntent": function (intent, session, response) {
-        var feelingSlot = intent.slots.Feelings;
-        if (feelingSlot && feelingSlot.value) {
-            handleFeelingsDialogRequest(intent, session, response);
+        var phraseSlot = intent.slots.Phrase;
+        if (phraseSlot && phraseSlot.value) {
+            handlePhraseDialogRequest(intent, session, response);
         } else {
             handleNoSlotDialogRequest(intent, session, response);
         }
@@ -85,11 +85,12 @@ Cognitunes.prototype.intentHandlers = {
 // -------------------------- Cognitunes Domain Specific Business Logic --------------------------
 
 // example city to NOAA station mapping. Can be found on: http://tidesandcurrents.noaa.gov/map/
-var SONGS = {
-    'joy': 9447130,
-    'fear': 9414290,
-    'disgust': 9413450,
-    'anger': 9410660
+var EMOTIONS = {
+    'joy': ["https://s3.amazonaws.com/bean-mrjob/joy.mp3"],
+    'anger': ["https://s3.amazonaws.com/bean-mrjob/anger.mp3"],
+    'fear': ["https://s3.amazonaws.com/bean-mrjob/fear.mp3"],
+    'disgust': ["https://s3.amazonaws.com/bean-mrjob/disgust.mp3"],
+    'sadness': ["https://s3.amazonaws.com/bean-mrjob/sadness.mp3"],
 };
 
 function handleWelcomeRequest(response) {
@@ -198,6 +199,42 @@ function handleDateDialogRequest(intent, session, response) {
     }
 }
 
+function handlePhraseDialogRequest(intent, session, response) {
+    var phrase = intent.slots.Phrase;
+    var speechOutput;
+
+    getEmotionForPhrase(phrase, function(emotion, error) {
+        if (error) {
+            speechOutput = "Sorry, my friend IBM Watson is experiencing issues. Please try again.";
+        } else {
+            var src = EMOTIONS[emotion];
+            speechOutput = '<speak><audio src="' + src + '"></audio></speak>';
+        }
+        response.tellWithCard(speechOutput, "Cognitunes", speechOutput);
+    });
+}
+
+function getEmotionForPhrase(phrase, emotionResponseCallback) {
+    var endpoint = "https://qb54apltkl.execute-api.us-east-1.amazonaws.com/prod/alchemy-emotions/";
+    var url = endpoint + "?phrase=" + phrase;
+
+    var emotionString;
+
+    http.get(url, function(res) {
+        res.on('data', function(data) {
+            emotionString = data['emotion'];
+        });
+
+        res.on('end', function() {
+            var emotion = JSON.parse(emotionString);
+            emotionResponseCallback(emotion, null);
+        });
+    }).on('error', function(err) {
+        console.log('Get emotions for phrase error: ' + err.message);
+        emotionResponseCallback(null, err.message);
+    });
+}
+
 /**
  * Handle no slots, or slot(s) with no values.
  * In the case of a dialog based skill with multiple slots,
@@ -206,16 +243,21 @@ function handleDateDialogRequest(intent, session, response) {
  * determine the next turn in the dialog, and reprompt.
  */
 function handleNoSlotDialogRequest(intent, session, response) {
-    if (session.attributes.city) {
-        // get date re-prompt
-        var repromptText = "Please try again saying a day of the week, for example, Saturday. ";
-        var speechOutput = repromptText;
+    var speechOutput = "What's going on with you?";
+    var repromptText = "Please try again, let me know how you're doing, "
+        + "so I can customize your music for you";
+    response.ask(speechOutput);
 
-        response.ask(speechOutput, repromptText);
-    } else {
-        // get city re-prompt
-        handleSupportedCitiesRequest(intent, session, response);
-    }
+    // if (session.attributes.city) {
+    //     // get date re-prompt
+    //     var repromptText = "Please try again saying a day of the week, for example, Saturday. ";
+    //     var speechOutput = repromptText;
+
+    //     response.ask(speechOutput, repromptText);
+    // } else {
+    //     // get city re-prompt
+    //     handleSupportedCitiesRequest(intent, session, response);
+    // }
 }
 
 /**

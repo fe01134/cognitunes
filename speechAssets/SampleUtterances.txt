@@ -1,1 +1,2 @@
-CognitunesIntent play some music
+DialogIntent play some music
+DialogIntent {Phrase}
