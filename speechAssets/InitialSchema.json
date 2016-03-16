@@ -1,11 +1,16 @@
 {
   "intents": [
     {
-      "intent": "CognitunesIntent"
+      "intent": "DialogIntent",
+      "slots": [
+        {
+          "name": "Phrase",
+          "type": "LIST_OF_PHRASES"
+        }
+      ]
     },
     {
       "intent": "AMAZON.HelpIntent"
     }
   ]
 }
-

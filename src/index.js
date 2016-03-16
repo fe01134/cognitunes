@@ -45,7 +45,7 @@ Cognitunes.prototype.eventHandlers.onSessionStarted = function (sessionStartedRe
 Cognitunes.prototype.eventHandlers.onLaunch = function (launchRequest, session, response) {
     console.log("onLaunch requestId: " + launchRequest.requestId + ", sessionId: " + session.sessionId);
     var speechOutput = {
-        speech: "Welcome to Cognitunes. What's going on?",
+        speech: "Welcome to Cognitunes. What's happening?",
         type: AlexaSkill.speechOutputType.PLAIN_TEXT
     };
     var repromptOutput = {
@@ -75,7 +75,8 @@ Cognitunes.prototype.intentHandlers = {
     },
 
     "AMAZON.HelpIntent": function (intent, session, response) {
-        handleHelpRequest(response);
+        response.tell("I didn't understand you, just try telling me what's going on.");
+        // handleHelpRequest(response);
     },
 
     "AMAZON.StopIntent": function (intent, session, response) {
@@ -92,12 +93,22 @@ Cognitunes.prototype.intentHandlers = {
 // -------------------------- Cognitunes Domain Specific Business Logic --------------------------
 
 // example city to NOAA station mapping. Can be found on: http://tidesandcurrents.noaa.gov/map/
-var EMOTIONS = {
-    'joy': ["https://s3.amazonaws.com/bean-mrjob/joy.mp3"],
+var EMOTION_URLS = {
+    'joy': [
+        "https://s3.amazonaws.com/bean-mrjob/theweeknd.mp3"
+    ],
     'anger': ["https://s3.amazonaws.com/bean-mrjob/anger.mp3"],
     'fear': ["https://s3.amazonaws.com/bean-mrjob/fear.mp3"],
     'disgust': ["https://s3.amazonaws.com/bean-mrjob/disgust.mp3"],
     'sadness': ["https://s3.amazonaws.com/bean-mrjob/sadness.mp3"]
+};
+
+var EMOTION_NAMES = {
+    'joy': 'happy',
+    'anger': 'angry',
+    'fear': 'soothing',
+    'disgust': 'soothing',
+    'sadness': 'sad'
 };
 
 
@@ -108,12 +119,20 @@ function handlePhraseDialogRequest(intent, session, response) {
 
     getEmotionForPhrase(phrase.value, function(emotion, error) {
         if (error) {
-            speechOutput = "Sorry, my friend IBM Watson is experiencing issues. Please try again.";
+            speechOutput = {
+                speech: "Sorry, my friend IBM Watson is experiencing issues. Please try again.",
+                type: AlexaSkill.speechOutputType.PLAIN_TEXT
+            };
         } else {
-            var src = EMOTIONS[emotion];
-            speechOutput = '<speak><audio src="' + src + '"></audio></speak>';
+            var src = EMOTION_URLS[emotion][0];
+            var adjective = EMOTION_NAMES[emotion];
+            speechOutput = {
+                speech: "<speak>Playing " + adjective + " music. <audio src='" + src + "'/></speak>",
+                type: AlexaSkill.speechOutputType.SSML
+            };
         }
-        response.tellWithCard(speechOutput, "Cognitunes", speechOutput);
+        console.log('speechOutput: ' + JSON.stringify(speechOutput));
+        response.tell(speechOutput, "Cognitunes", speechOutput);
     });
 }
 
@@ -132,7 +151,6 @@ function getEmotionForPhrase(phrase, emotionResponseCallback) {
         res.on('end', function() {
             console.log('on end -  emotionString: ' + emotionString);
             var emotionObj = JSON.parse(emotionString);
-            console.log('')
             emotionResponseCallback(emotionObj.emotion, null);
         });
     }).on('error', function(err) {
